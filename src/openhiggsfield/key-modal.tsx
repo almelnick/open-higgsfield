@@ -21,10 +21,10 @@ export function KeyModal({
   onSaved,
   onCleared,
 }: {
-  configured: Record<Provider, boolean>;
+  configured: Record<Provider, string | null>;
   initialProvider: Provider;
   onClose: () => void;
-  onSaved: (provider: Provider) => void;
+  onSaved: (provider: Provider, hint: string) => void;
   onCleared: (provider: Provider) => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -35,6 +35,7 @@ export function KeyModal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const held = configured[provider];
+  const [justSaved, setJustSaved] = useState<Provider | null>(null);
   const label = PROVIDER_LABELS[provider];
 
   useEffect(() => {
@@ -45,6 +46,7 @@ export function KeyModal({
   function pick(next: Provider) {
     setProvider(next);
     setApiKey("");
+    setJustSaved(null);
     setError(null);
   }
 
@@ -62,9 +64,10 @@ export function KeyModal({
     setBusy(true);
     setError(null);
     try {
-      await savePlatformCredentials({ api_key: apiKey, provider });
+      const hint = await savePlatformCredentials({ api_key: apiKey, provider });
       setApiKey("");
-      onSaved(provider);
+      setJustSaved(provider);
+      onSaved(provider, hint);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not save the key");
     } finally {
@@ -78,6 +81,7 @@ export function KeyModal({
     try {
       await clearPlatformCredentials({ provider });
       setApiKey("");
+      setJustSaved(null);
       onCleared(provider);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not remove the key");
@@ -103,7 +107,7 @@ export function KeyModal({
             </div>
             <p className="ohf-keys-copy">
               {held
-                ? `A ${label} key is saved in this browser. Enter a new id:secret pair to replace it.`
+                ? `Your ${label} key is saved in this browser. The field stays empty on purpose — paste a new id:secret pair only to replace it.`
                 : PROVIDER_COPY[provider]}
             </p>
           </div>
@@ -139,6 +143,14 @@ export function KeyModal({
         </div>
 
         <form className="ohf-keys-form" onSubmit={(event) => void onSubmit(event)}>
+          {held && (
+            <div className="ohf-keys-saved" role="status">
+              <span className="ohf-keys-saved-dot" aria-hidden />
+              {justSaved === provider ? "Saved" : "Saved key"}
+              <code className="ohf-keys-saved-hint">{held}</code>
+            </div>
+          )}
+
           <label className="ohf-field">
             <div className="ohf-field-label">{label} key</div>
             <input
@@ -147,6 +159,7 @@ export function KeyModal({
               type="password"
               autoComplete="off"
               spellCheck={false}
+              placeholder={held ? "Paste a new key to replace it" : "id:secret"}
               value={apiKey}
               onChange={(event) => setApiKey(event.target.value)}
             />
@@ -164,9 +177,15 @@ export function KeyModal({
                 Remove key
               </button>
             )}
-            <button type="submit" className="ohf-keys-save" disabled={busy || !apiKey.trim()}>
-              {busy ? "Saving…" : held ? "Replace key" : "Save key"}
-            </button>
+            {held && !apiKey.trim() ? (
+              <button type="button" className="ohf-keys-save" onClick={onClose}>
+                Done
+              </button>
+            ) : (
+              <button type="submit" className="ohf-keys-save" disabled={busy || !apiKey.trim()}>
+                {busy ? "Saving…" : held ? "Replace key" : "Save key"}
+              </button>
+            )}
           </div>
         </form>
       </div>

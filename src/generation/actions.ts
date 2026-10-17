@@ -11,6 +11,7 @@ import {
   PROVIDER_KEY_COOKIES,
   decodeCredentials,
   encodeCredentials,
+  maskKey,
   parseCredentialInput,
   parseProvider,
 } from "./credentials";
@@ -25,6 +26,7 @@ export async function savePlatformCredentials(data: unknown) {
   const { apiKey, provider } = parseCredentialInput(data);
   const jar = await cookies();
   jar.set(PROVIDER_KEY_COOKIES[provider], encodeCredentials(apiKey), PLATFORM_KEY_COOKIE_OPTIONS);
+  return maskKey(apiKey);
 }
 
 export async function clearPlatformCredentials(data?: unknown) {
@@ -33,12 +35,16 @@ export async function clearPlatformCredentials(data?: unknown) {
   jar.set(PROVIDER_KEY_COOKIES[provider], "", { ...PLATFORM_KEY_COOKIE_OPTIONS, maxAge: 0 });
 }
 
-/** Which providers hold a key in this browser. */
-export async function hasPlatformCredentials(): Promise<Record<Provider, boolean>> {
+/** Which providers hold a key in this browser, each as a masked hint the key
+    modal can show, or null where there is none. */
+export async function hasPlatformCredentials(): Promise<Record<Provider, string | null>> {
   const entries = await Promise.all(
-    PROVIDERS.map(async (provider) => [provider, (await readStoredCredentials(provider)) !== null] as const),
+    PROVIDERS.map(async (provider) => {
+      const stored = await readStoredCredentials(provider);
+      return [provider, stored ? maskKey(stored.apiKey) : null] as const;
+    }),
   );
-  return Object.fromEntries(entries) as Record<Provider, boolean>;
+  return Object.fromEntries(entries) as Record<Provider, string | null>;
 }
 
 export async function submitGeneration(plane: GenerationPlane) {
