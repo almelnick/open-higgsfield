@@ -64,7 +64,9 @@ export function KeyModal({
     setBusy(true);
     setError(null);
     try {
-      const hint = await savePlatformCredentials({ api_key: apiKey, provider });
+      const saved = await savePlatformCredentials({ api_key: apiKey, provider });
+      if (!saved.ok) throw new Error(saved.error);
+      const hint = saved.value;
       setApiKey("");
       setJustSaved(provider);
       onSaved(provider, hint);
@@ -79,7 +81,8 @@ export function KeyModal({
     setBusy(true);
     setError(null);
     try {
-      await clearPlatformCredentials({ provider });
+      const cleared = await clearPlatformCredentials({ provider });
+      if (!cleared.ok) throw new Error(cleared.error);
       setApiKey("");
       setJustSaved(null);
       onCleared(provider);
