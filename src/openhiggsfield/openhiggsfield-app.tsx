@@ -191,11 +191,12 @@ export function OpenHiggsfieldApp({ fontClassName = "" }: { fontClassName?: stri
      recent sheets on top, and a range extends from the last one touched. */
   const [selected, setSelected] = useState<string[]>([]);
   const [saving, setSaving] = useState<SaveProgress | null>(null);
-  const [keys, setKeys] = useState<Record<Provider, boolean>>({ higgsfield: false, fal: false });
+  /* A masked hint per provider that holds a key, null where none is saved. */
+  const [keys, setKeys] = useState<Record<Provider, string | null>>({ higgsfield: null, fal: null });
   const [keysOpen, setKeysOpen] = useState(false);
   const [keysProvider, setKeysProvider] = useState<Provider>("higgsfield");
   /* The lamp answers for the model in the composer: can this one run. */
-  const keyConfigured = keys[providerOf(model)];
+  const keyConfigured = keys[providerOf(model)] !== null;
 
   const galleryRef = useRef<HTMLDivElement>(null);
   const rangeAnchor = useRef<number | null>(null);
@@ -723,13 +724,14 @@ export function OpenHiggsfieldApp({ fontClassName = "" }: { fontClassName?: stri
             configured={keys}
             initialProvider={keysProvider}
             onClose={() => setKeysOpen(false)}
-            onSaved={(provider) => {
-              setKeys((prev) => ({ ...prev, [provider]: true }));
-              setKeysOpen(false);
+            onSaved={(provider, hint) => {
+              /* The modal stays open on the confirmation: closing on save
+                 left an empty field behind, which read as a lost key. */
+              setKeys((prev) => ({ ...prev, [provider]: hint }));
               setError(null);
             }}
             onCleared={(provider) => {
-              setKeys((prev) => ({ ...prev, [provider]: false }));
+              setKeys((prev) => ({ ...prev, [provider]: null }));
             }}
           />
         )}

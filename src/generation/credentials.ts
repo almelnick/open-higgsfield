@@ -74,6 +74,15 @@ export function parseCredentialInput(data: unknown): { apiKey: string; provider:
   return { apiKey: requireIdAndSecret(apiKey.trim()), provider };
 }
 
+/** Enough of a saved key to recognise it — the head of the id and the tail of
+    the secret — never enough to use it. */
+export function maskKey(apiKey: string): string {
+  const colon = apiKey.indexOf(":");
+  const id = apiKey.slice(0, colon);
+  const secret = apiKey.slice(colon + 1);
+  return `${id.slice(0, 4)}…${secret.slice(-4)}`;
+}
+
 /** Both platforms take the same header: `Key id:secret`. */
 export function toAuthorizationHeader(apiKey: string): string {
   return `Key ${requireIdAndSecret(apiKey)}`;
