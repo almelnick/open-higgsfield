@@ -2,33 +2,43 @@
 
 import { cookies } from "next/headers";
 
-import { getModel, parseSettings } from "./catalog";
-import type { GenerationPlane } from "./catalog/types";
+import { getModel, parseSettings, providerOf } from "./catalog";
+import type { GenerationPlane, Provider } from "./catalog/types";
 import {
   MissingCredentialsError,
-  PLATFORM_KEY_COOKIE,
   PLATFORM_KEY_COOKIE_OPTIONS,
+  PROVIDERS,
+  PROVIDER_KEY_COOKIES,
   decodeCredentials,
   encodeCredentials,
   parseCredentialInput,
+  parseProvider,
 } from "./credentials";
+import { createFalClient, isFalRequestId } from "./fal";
 import { createPlatformClient } from "./platform";
 import type { StatusResult } from "./platform";
 import { toPlatform } from "./to-platform";
 
+type Client = ReturnType<typeof createPlatformClient>;
+
 export async function savePlatformCredentials(data: unknown) {
-  const { apiKey } = parseCredentialInput(data);
+  const { apiKey, provider } = parseCredentialInput(data);
   const jar = await cookies();
-  jar.set(PLATFORM_KEY_COOKIE, encodeCredentials(apiKey), PLATFORM_KEY_COOKIE_OPTIONS);
+  jar.set(PROVIDER_KEY_COOKIES[provider], encodeCredentials(apiKey), PLATFORM_KEY_COOKIE_OPTIONS);
 }
 
-export async function clearPlatformCredentials() {
+export async function clearPlatformCredentials(data?: unknown) {
+  const provider = parseProvider(data === undefined ? undefined : asObject(data, "Invalid provider").provider);
   const jar = await cookies();
-  jar.set(PLATFORM_KEY_COOKIE, "", { ...PLATFORM_KEY_COOKIE_OPTIONS, maxAge: 0 });
+  jar.set(PROVIDER_KEY_COOKIES[provider], "", { ...PLATFORM_KEY_COOKIE_OPTIONS, maxAge: 0 });
 }
 
-export async function hasPlatformCredentials() {
-  return (await readStoredCredentials()) !== null;
+/** Which providers hold a key in this browser. */
+export async function hasPlatformCredentials(): Promise<Record<Provider, boolean>> {
+  const entries = await Promise.all(
+    PROVIDERS.map(async (provider) => [provider, (await readStoredCredentials(provider)) !== null] as const),
+  );
+  return Object.fromEntries(entries) as Record<Provider, boolean>;
 }
 
 export async function submitGeneration(plane: GenerationPlane) {
@@ -38,7 +48,7 @@ export async function submitGeneration(plane: GenerationPlane) {
     settings: parseSettings(model, plane.settings),
   };
   const { path, body } = toPlatform(parsed);
-  return createPlatformClient(await readCredentials()).submit(path, body);
+  return (await clientFor(providerOf(model))).submit(path, body);
 }
 
 /** Every request in flight, answered in one round trip. Next dispatches server
@@ -47,10 +57,21 @@ export async function submitGeneration(plane: GenerationPlane) {
     genuinely parallel. */
 export async function getGenerationStatuses(data: unknown): Promise<StatusResult[]> {
   const requestIds = parseRequestIds(data);
-  const client = createPlatformClient(await readCredentials());
+  /* One client per provider in the round, built on first use: a missing key
+     fails only the runs that need it. */
+  const clients = new Map<Provider, Promise<Client>>();
+  const clientOf = (provider: Provider) => {
+    let client = clients.get(provider);
+    if (!client) {
+      client = clientFor(provider);
+      clients.set(provider, client);
+    }
+    return client;
+  };
   return Promise.all(
     requestIds.map(async (requestId): Promise<StatusResult> => {
       try {
+        const client = await clientOf(isFalRequestId(requestId) ? "fal" : "higgsfield");
         return { requestId, status: await client.status(requestId) };
       } catch (caught) {
         return { requestId, error: caught instanceof Error ? caught.message : String(caught) };
@@ -59,17 +80,18 @@ export async function getGenerationStatuses(data: unknown): Promise<StatusResult
   );
 }
 
-async function readStoredCredentials() {
+async function readStoredCredentials(provider: Provider) {
   const jar = await cookies();
-  return decodeCredentials(jar.get(PLATFORM_KEY_COOKIE)?.value);
+  return decodeCredentials(jar.get(PROVIDER_KEY_COOKIES[provider])?.value);
 }
 
-async function readCredentials() {
-  const stored = await readStoredCredentials();
-  if (!stored) throw new MissingCredentialsError();
+async function clientFor(provider: Provider): Promise<Client> {
+  const stored = await readStoredCredentials(provider);
+  if (!stored) throw new MissingCredentialsError(provider);
+  if (provider === "fal") return createFalClient(stored);
   const baseUrl = process.env.HF_API_BASE_URL;
   if (!baseUrl) throw new Error("Missing HF_API_BASE_URL");
-  return { ...stored, baseUrl };
+  return createPlatformClient({ ...stored, baseUrl });
 }
 
 function parseRequestIds(data: unknown): string[] {
