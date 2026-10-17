@@ -1,7 +1,7 @@
 # OpenHiggsfield AI — Open-Source Alternative to Higgsfield AI
 
 > **The free, open-source alternative to Higgsfield AI.** Generate images and
-> videos with 43 models from one prompt bar — no closed ecosystem, no studio
+> videos with 54 models from one prompt bar — no closed ecosystem, no studio
 > subscription.
 
 ## 🌐 Try it Online — No Install Required
@@ -18,7 +18,7 @@ platform key (`id:secret`) to start generating. The studio itself is free.
 - **Free & open-source** — no studio subscription, no vendor lock-in
 - **Self-hosted** — clone it, run it, change it
 - **Your key** — generate with your own platform key
-- **43 models** — 10 image, 33 video, one catalog, one composer
+- **54 models** — 16 image, 38 video, one catalog, one composer
 - **Two providers** — Higgsfield and fal.ai, each with its own key
 
 ---
@@ -33,7 +33,7 @@ Next.js 16 App Router on Vercel · React 19 · plain CSS · Zustand · pnpm
 
 - **One composer for Image and Video.** A single prompt bar drives both; the
   model you pick decides image or video. `⌘/Ctrl + Enter` submits.
-- **43 models in the catalog** — 10 image, 33 video: Soul 2, Soul Cinema, Seedance
+- **54 models in the catalog** — 16 image, 38 video: Soul 2, Soul Cinema, Seedance
   2.5 (Edit / Extend), Seedance 2.0 (Fast / Mini), Kling 3 (Turbo / Std / Pro / 4K / Motion), Wan, Flux,
   Ideogram, Recraft, LTX, MiniMax, PixVerse, Grok, Qwen and more. Searchable
   picker.
@@ -79,8 +79,10 @@ Next.js 16 App Router on Vercel · React 19 · plain CSS · Zustand · pnpm
 - **Your own platform key.** Entered in a modal, stored by a server action in an
   httpOnly cookie. A missing key opens the modal — it never fails silently. The
   topbar lamp states whether a key is held and whether a run is in flight.
-- **fal.ai as a second provider.** Flux 2 Pro (with reference edit), Flux 1.1
-  Pro Ultra, Kling 3.0 Pro / Standard and Kling 2.5 Turbo Pro run on
+- **fal.ai as a second provider.** Nano Banana Pro, Ideogram 3, Seedream 4.5,
+  Imagen 4 Ultra, GPT Image 1.5, Flux 2 Pro, Flux 1.1 Pro Ultra and Recraft V4
+  for images; Veo 3.1 / Fast, Kling 3.0 Pro / Standard, Kling 2.5 Turbo Pro,
+  Sora 2, Seedance 1.5 Pro, Hailuo 2.3 Pro and Wan 2.7 for video run on
   [fal.ai](https://fal.ai) with your own fal key (`id:secret`, saved in its own
   httpOnly cookie). These models are marked `· fal` in the picker; the key modal
   has one tab per provider and opens on the one the current model needs.
