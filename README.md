@@ -1,7 +1,7 @@
 # OpenHiggsfield AI — Open-Source Alternative to Higgsfield AI
 
 > **The free, open-source alternative to Higgsfield AI.** Generate images and
-> videos with 38 models from one prompt bar — no closed ecosystem, no studio
+> videos with 43 models from one prompt bar — no closed ecosystem, no studio
 > subscription.
 
 ## 🌐 Try it Online — No Install Required
@@ -18,7 +18,8 @@ platform key (`id:secret`) to start generating. The studio itself is free.
 - **Free & open-source** — no studio subscription, no vendor lock-in
 - **Self-hosted** — clone it, run it, change it
 - **Your key** — generate with your own platform key
-- **38 models** — 8 image, 30 video, one catalog, one composer
+- **43 models** — 10 image, 33 video, one catalog, one composer
+- **Two providers** — Higgsfield and fal.ai, each with its own key
 
 ---
 
@@ -32,7 +33,7 @@ Next.js 16 App Router on Vercel · React 19 · plain CSS · Zustand · pnpm
 
 - **One composer for Image and Video.** A single prompt bar drives both; the
   model you pick decides image or video. `⌘/Ctrl + Enter` submits.
-- **38 models in the catalog** — 8 image, 30 video: Soul 2, Soul Cinema, Seedance
+- **43 models in the catalog** — 10 image, 33 video: Soul 2, Soul Cinema, Seedance
   2.5 (Edit / Extend), Seedance 2.0 (Fast / Mini), Kling 3 (Turbo / Std / Pro / 4K / Motion), Wan, Flux,
   Ideogram, Recraft, LTX, MiniMax, PixVerse, Grok, Qwen and more. Searchable
   picker.
@@ -78,6 +79,11 @@ Next.js 16 App Router on Vercel · React 19 · plain CSS · Zustand · pnpm
 - **Your own platform key.** Entered in a modal, stored by a server action in an
   httpOnly cookie. A missing key opens the modal — it never fails silently. The
   topbar lamp states whether a key is held and whether a run is in flight.
+- **fal.ai as a second provider.** Flux 2 Pro (with reference edit), Flux 1.1
+  Pro Ultra, Kling 3.0 Pro / Standard and Kling 2.5 Turbo Pro run on
+  [fal.ai](https://fal.ai) with your own fal key (`id:secret`, saved in its own
+  httpOnly cookie). These models are marked `· fal` in the picker; the key modal
+  has one tab per provider and opens on the one the current model needs.
 
 ---
 
@@ -91,6 +97,11 @@ Each generate is one object: `{ model, prompt, media, settings }`.
 - **Server actions are the only caller.** The browser never talks to the
   generation API. Submit is `POST /{model}`; status is
   `GET /requests/{id}/status`. Auth is `Authorization: Key <api_key>`.
+- **fal.ai uses its queue** (`https://queue.fal.run`, `src/generation/fal.ts`).
+  Submit is `POST /{endpoint}`; status and result live under the app
+  (`/{owner}/{alias}/requests/{id}/status`, then `/requests/{id}`), so the app
+  is packed into the request id the studio keeps (`fal:{owner}/{alias}:{id}`).
+  A catalog entry opts in with `provider: "fal"`.
 - **The catalog is the source of truth** (`src/generation/catalog/`). A new entry
   appears in the picker, brings its own settings rail and media roles, and needs
   no studio changes.

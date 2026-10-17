@@ -2959,6 +2959,14 @@
   line-height: 1.45;
   color: var(--tx3);
 }
+.ohf-keys-tabs {
+  padding: 14px 18px 0;
+}
+/* The dialog panel already sits on --s3, so the picked provider needs its own
+   lift to read as picked. */
+.ohf-keys-tabs .ohf-assets-tab[aria-selected="true"] {
+  background: rgba(255, 255, 255, 0.08);
+}
 .ohf-keys-form {
   display: flex;
   flex-direction: column;

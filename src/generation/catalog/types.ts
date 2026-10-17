@@ -1,4 +1,7 @@
 export type Surface = "image" | "video";
+/** Who serves the generate request. Higgsfield is the default platform; fal.ai
+    is a second queue reached with its own key. */
+export type Provider = "higgsfield" | "fal";
 export type MediaRole = "start" | "end" | "reference" | "video" | "audio";
 
 export type MediaItem = {
@@ -27,6 +30,8 @@ export type ModelEntry = {
   settings: Record<string, SettingField>;
   /** Submit paths when the shared mapper is enough. Soul, Kling 3, and Seedance keep custom maps. */
   paths?: PlatformPaths;
+  /** Omitted means Higgsfield. */
+  provider?: Provider;
 };
 
 export type GenerationPlane = {
