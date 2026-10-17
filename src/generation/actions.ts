@@ -17,22 +17,27 @@ import {
 } from "./credentials";
 import { createFalClient, isFalRequestId } from "./fal";
 import { createPlatformClient } from "./platform";
-import type { StatusResult } from "./platform";
+import type { ActionResult, QueuedGeneration, StatusResult } from "./platform";
 import { toPlatform } from "./to-platform";
 
 type Client = ReturnType<typeof createPlatformClient>;
 
-export async function savePlatformCredentials(data: unknown) {
-  const { apiKey, provider } = parseCredentialInput(data);
-  const jar = await cookies();
-  jar.set(PROVIDER_KEY_COOKIES[provider], encodeCredentials(apiKey), PLATFORM_KEY_COOKIE_OPTIONS);
-  return maskKey(apiKey);
+export async function savePlatformCredentials(data: unknown): Promise<ActionResult<string>> {
+  return settle("save key", async () => {
+    const { apiKey, provider } = parseCredentialInput(data);
+    const jar = await cookies();
+    jar.set(PROVIDER_KEY_COOKIES[provider], encodeCredentials(apiKey), PLATFORM_KEY_COOKIE_OPTIONS);
+    return maskKey(apiKey);
+  });
 }
 
-export async function clearPlatformCredentials(data?: unknown) {
-  const provider = parseProvider(data === undefined ? undefined : asObject(data, "Invalid provider").provider);
-  const jar = await cookies();
-  jar.set(PROVIDER_KEY_COOKIES[provider], "", { ...PLATFORM_KEY_COOKIE_OPTIONS, maxAge: 0 });
+export async function clearPlatformCredentials(data?: unknown): Promise<ActionResult<null>> {
+  return settle("clear key", async () => {
+    const provider = parseProvider(data === undefined ? undefined : asObject(data, "Invalid provider").provider);
+    const jar = await cookies();
+    jar.set(PROVIDER_KEY_COOKIES[provider], "", { ...PLATFORM_KEY_COOKIE_OPTIONS, maxAge: 0 });
+    return null;
+  });
 }
 
 /** Which providers hold a key in this browser, each as a masked hint the key
@@ -47,14 +52,16 @@ export async function hasPlatformCredentials(): Promise<Record<Provider, string 
   return Object.fromEntries(entries) as Record<Provider, string | null>;
 }
 
-export async function submitGeneration(plane: GenerationPlane) {
-  const model = getModel(plane.model);
-  const parsed: GenerationPlane = {
-    ...plane,
-    settings: parseSettings(model, plane.settings),
-  };
-  const { path, body } = toPlatform(parsed);
-  return (await clientFor(providerOf(model))).submit(path, body);
+export async function submitGeneration(plane: GenerationPlane): Promise<ActionResult<QueuedGeneration>> {
+  return settle("submit", async () => {
+    const model = getModel(plane.model);
+    const parsed: GenerationPlane = {
+      ...plane,
+      settings: parseSettings(model, plane.settings),
+    };
+    const { path, body } = toPlatform(parsed);
+    return (await clientFor(providerOf(model))).submit(path, body);
+  });
 }
 
 /** Every request in flight, answered in one round trip. Next dispatches server
@@ -80,10 +87,24 @@ export async function getGenerationStatuses(data: unknown): Promise<StatusResult
         const client = await clientOf(isFalRequestId(requestId) ? "fal" : "higgsfield");
         return { requestId, status: await client.status(requestId) };
       } catch (caught) {
-        return { requestId, error: caught instanceof Error ? caught.message : String(caught) };
+        const error = caught instanceof Error ? caught.message : String(caught);
+        console.error("[action] status failed", { requestId, error });
+        return { requestId, error };
       }
     }),
   );
+}
+
+/* Every failure is logged here, where Vercel keeps it, and handed back as text
+   the studio can show. */
+async function settle<T>(action: string, run: () => Promise<T>): Promise<ActionResult<T>> {
+  try {
+    return { ok: true, value: await run() };
+  } catch (caught) {
+    const error = caught instanceof Error ? caught.message : String(caught);
+    console.error(`[action] ${action} failed`, error);
+    return { ok: false, error };
+  }
 }
 
 async function readStoredCredentials(provider: Provider) {

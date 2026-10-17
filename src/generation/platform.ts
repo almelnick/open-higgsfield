@@ -35,6 +35,12 @@ export type StatusResult =
   | { requestId: string; status: GenerationStatus }
   | { requestId: string; error: string };
 
+/** What a server action hands back instead of throwing. Production builds of
+    Next replace a thrown error's message with a generic one before it reaches
+    the browser, so "API key must be id:secret" or fal's own reason would never
+    be read; a returned error crosses intact. */
+export type ActionResult<T> = { ok: true; value: T } | { ok: false; error: string };
+
 export type PlatformClientOptions = {
   apiKey: string;
   baseUrl: string;
