@@ -1,5 +1,23 @@
 import { dop } from "./dop";
-import { falFlux2Pro, falFluxUltra, falKling25Turbo, falKling3Pro, falKling3Std } from "./fal";
+import {
+  falFlux2Pro,
+  falFluxUltra,
+  falGptImage15,
+  falHailuo23Pro,
+  falIdeogram3,
+  falImagen4Ultra,
+  falKling25Turbo,
+  falKling3Pro,
+  falKling3Std,
+  falNanoBananaPro,
+  falRecraftV4,
+  falSeedance15Pro,
+  falSeedream45,
+  falSora2,
+  falVeo31,
+  falVeo31Fast,
+  falWan27,
+} from "./fal";
 import { flux2 } from "./flux-2";
 import { flux3 } from "./flux-3";
 import { grokImagine2 } from "./grok-imagine-2";
@@ -76,11 +94,23 @@ export const MODELS: readonly ModelEntry[] = [
   grokImagineVideo15,
   pixverse6,
   dop,
+  falNanoBananaPro,
+  falIdeogram3,
+  falSeedream45,
+  falImagen4Ultra,
+  falGptImage15,
   falFlux2Pro,
   falFluxUltra,
+  falRecraftV4,
+  falVeo31,
+  falVeo31Fast,
   falKling3Pro,
   falKling3Std,
   falKling25Turbo,
+  falSora2,
+  falSeedance15Pro,
+  falHailuo23Pro,
+  falWan27,
 ];
 
 export function getModel(id: string): ModelEntry {

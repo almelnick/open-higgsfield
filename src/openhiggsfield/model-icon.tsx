@@ -10,6 +10,7 @@ export function modelIconFile(modelId: string): string | undefined {
   if (id.startsWith("grok")) return "grok";
   if (id.startsWith("happy-horse")) return "happy-horse";
   if (id.startsWith("minimax")) return "minimax";
+  if (id.startsWith("hailuo")) return "minimax";
   if (id.startsWith("recraft")) return "recraft";
   if (id.startsWith("soul") || id === "dop") return "higgsfield";
   if (id.startsWith("ideogram")) return "ideogram";

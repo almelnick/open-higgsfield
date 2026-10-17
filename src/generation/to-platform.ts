@@ -24,6 +24,21 @@ const MAP: Record<string, Mapper> = {
   "fal-kling-3-pro": (plane) => mapFalKling3(plane, "fal-ai/kling-video/v3/pro"),
   "fal-kling-3-std": (plane) => mapFalKling3(plane, "fal-ai/kling-video/v3/standard"),
   "fal-kling-2.5-turbo": mapFalKling25Turbo,
+  "fal-ideogram-3": mapFalIdeogram3,
+  "fal-nano-banana-pro": mapFalNanoBananaPro,
+  "fal-seedream-4.5": mapFalSeedream45,
+  "fal-imagen-4-ultra": mapFalImagen4Ultra,
+  "fal-gpt-image-1.5": mapFalGptImage15,
+  "fal-recraft-4": (plane) => ({
+    path: "fal-ai/recraft/v4/text-to-image",
+    body: { prompt: plane.prompt.text, image_size: falImageSize(plane) },
+  }),
+  "fal-veo-3.1": (plane) => mapFalVeo(plane, "fal-ai/veo3.1"),
+  "fal-veo-3.1-fast": (plane) => mapFalVeo(plane, "fal-ai/veo3.1/fast"),
+  "fal-hailuo-2.3-pro": mapFalHailuo23Pro,
+  "fal-seedance-1.5-pro": mapFalSeedance15Pro,
+  "fal-sora-2": mapFalSora2,
+  "fal-wan-2.7": mapFalWan27,
 };
 
 export function toPlatform(plane: GenerationPlane): Mapped {
@@ -215,11 +230,15 @@ const FAL_IMAGE_SIZE: Record<string, string> = {
   "9:16": "portrait_16_9",
 };
 
+function falImageSize(plane: GenerationPlane): string {
+  return FAL_IMAGE_SIZE[String(plane.settings.aspectRatio)] ?? "square_hd";
+}
+
 function mapFalFlux2Pro(plane: GenerationPlane): Mapped {
   const refs = urls(plane, "reference");
   const body: Record<string, unknown> = {
     prompt: plane.prompt.text,
-    image_size: FAL_IMAGE_SIZE[String(plane.settings.aspectRatio)] ?? "square_hd",
+    image_size: falImageSize(plane),
     output_format: plane.settings.outputFormat,
   };
   if (refs.length) return { path: "fal-ai/flux-2-pro/edit", body: { ...body, image_urls: refs } };
@@ -279,4 +298,159 @@ function mapFalKling25Turbo(plane: GenerationPlane): Mapped {
     path: "fal-ai/kling-video/v2.5-turbo/pro/text-to-video",
     body: { ...body, aspect_ratio: plane.settings.aspectRatio },
   };
+}
+
+/* With references, the image models below switch to their edit endpoint. */
+
+function mapFalIdeogram3(plane: GenerationPlane): Mapped {
+  const refs = urls(plane, "reference");
+  return {
+    path: "fal-ai/ideogram/v3",
+    body: {
+      prompt: plane.prompt.text,
+      image_size: falImageSize(plane),
+      rendering_speed: String(plane.settings.renderingSpeed).toUpperCase(),
+      style: String(plane.settings.style).toUpperCase(),
+      expand_prompt: plane.settings.enhancePrompt,
+      num_images: Number(plane.settings.numImages),
+      /* Ideogram reads these as style references, not as images to edit. */
+      ...(refs.length ? { image_urls: refs } : {}),
+    },
+  };
+}
+
+function mapFalNanoBananaPro(plane: GenerationPlane): Mapped {
+  const refs = urls(plane, "reference");
+  const body: Record<string, unknown> = {
+    prompt: plane.prompt.text,
+    aspect_ratio: plane.settings.aspectRatio,
+    resolution: String(plane.settings.resolution).toUpperCase(),
+    output_format: plane.settings.outputFormat,
+    num_images: Number(plane.settings.numImages),
+  };
+  if (refs.length) return { path: "fal-ai/nano-banana-pro/edit", body: { ...body, image_urls: refs } };
+  return { path: "fal-ai/nano-banana-pro", body };
+}
+
+function mapFalSeedream45(plane: GenerationPlane): Mapped {
+  const refs = urls(plane, "reference");
+  const body: Record<string, unknown> = {
+    prompt: plane.prompt.text,
+    image_size: falImageSize(plane),
+    num_images: Number(plane.settings.numImages),
+  };
+  if (refs.length) return { path: "fal-ai/bytedance/seedream/v4.5/edit", body: { ...body, image_urls: refs } };
+  return { path: "fal-ai/bytedance/seedream/v4.5/text-to-image", body };
+}
+
+function mapFalImagen4Ultra(plane: GenerationPlane): Mapped {
+  return {
+    path: "fal-ai/imagen4/preview/ultra",
+    body: {
+      prompt: plane.prompt.text,
+      aspect_ratio: plane.settings.aspectRatio,
+      resolution: String(plane.settings.resolution).toUpperCase(),
+      output_format: plane.settings.outputFormat,
+      num_images: Number(plane.settings.numImages),
+    },
+  };
+}
+
+const GPT_IMAGE_SIZE: Record<string, string> = {
+  "1:1": "1024x1024",
+  "3:2": "1536x1024",
+  "2:3": "1024x1536",
+};
+
+function mapFalGptImage15(plane: GenerationPlane): Mapped {
+  const refs = urls(plane, "reference");
+  const body: Record<string, unknown> = {
+    prompt: plane.prompt.text,
+    image_size: GPT_IMAGE_SIZE[String(plane.settings.aspectRatio)] ?? "1024x1024",
+    quality: plane.settings.quality,
+    background: plane.settings.background,
+    output_format: plane.settings.outputFormat,
+    num_images: Number(plane.settings.numImages),
+  };
+  if (refs.length) return { path: "fal-ai/gpt-image-1.5/edit", body: { ...body, image_urls: refs } };
+  return { path: "fal-ai/gpt-image-1.5", body };
+}
+
+/* Veo takes "8s"; a start and an end frame use the first-last endpoint. */
+function mapFalVeo(plane: GenerationPlane, prefix: string): Mapped {
+  const start = urls(plane, "start")[0];
+  const end = urls(plane, "end")[0];
+  const body: Record<string, unknown> = {
+    prompt: plane.prompt.text,
+    duration: `${plane.settings.duration}s`,
+    resolution: plane.settings.resolution,
+    generate_audio: plane.settings.generateAudio,
+    aspect_ratio: plane.settings.aspectRatio,
+  };
+  if (start && end) {
+    return {
+      path: `${prefix}/first-last-frame-to-video`,
+      body: { ...body, first_frame_url: start, last_frame_url: end },
+    };
+  }
+  if (start) return { path: `${prefix}/image-to-video`, body: { ...body, image_url: start } };
+  return { path: prefix, body };
+}
+
+function mapFalHailuo23Pro(plane: GenerationPlane): Mapped {
+  const start = urls(plane, "start")[0];
+  const body = { prompt: plane.prompt.text, prompt_optimizer: plane.settings.enhancePrompt };
+  if (start) return { path: "fal-ai/minimax/hailuo-2.3/pro/image-to-video", body: { ...body, image_url: start } };
+  return { path: "fal-ai/minimax/hailuo-2.3/pro/text-to-video", body };
+}
+
+function mapFalSeedance15Pro(plane: GenerationPlane): Mapped {
+  const start = urls(plane, "start")[0];
+  const end = urls(plane, "end")[0];
+  const body: Record<string, unknown> = {
+    prompt: plane.prompt.text,
+    aspect_ratio: plane.settings.aspectRatio,
+    duration: String(plane.settings.duration),
+    resolution: plane.settings.resolution,
+    generate_audio: plane.settings.generateAudio,
+    camera_fixed: plane.settings.cameraFixed,
+  };
+  if (start) {
+    return {
+      path: "fal-ai/bytedance/seedance/v1.5/pro/image-to-video",
+      body: { ...body, image_url: start, ...(end ? { end_image_url: end } : {}) },
+    };
+  }
+  return { path: "fal-ai/bytedance/seedance/v1.5/pro/text-to-video", body };
+}
+
+/* Sora renders 4, 8, 12, 16 or 20 seconds; anything between snaps down. */
+function mapFalSora2(plane: GenerationPlane): Mapped {
+  const start = urls(plane, "start")[0];
+  const seconds = Math.max(4, Math.floor(Number(plane.settings.duration) / 4) * 4);
+  const body: Record<string, unknown> = {
+    prompt: plane.prompt.text,
+    duration: String(seconds),
+    aspect_ratio: plane.settings.aspectRatio,
+  };
+  if (start) return { path: "fal-ai/sora-2/image-to-video", body: { ...body, image_url: start } };
+  return { path: "fal-ai/sora-2/text-to-video", body };
+}
+
+function mapFalWan27(plane: GenerationPlane): Mapped {
+  const start = urls(plane, "start")[0];
+  const end = urls(plane, "end")[0];
+  const body: Record<string, unknown> = {
+    prompt: plane.prompt.text,
+    duration: String(plane.settings.duration),
+    resolution: plane.settings.resolution,
+    enable_prompt_expansion: plane.settings.enhancePrompt,
+  };
+  if (start) {
+    return {
+      path: "fal-ai/wan/v2.7/image-to-video",
+      body: { ...body, image_url: start, ...(end ? { end_image_url: end } : {}) },
+    };
+  }
+  return { path: "fal-ai/wan/v2.7/text-to-video", body: { ...body, aspect_ratio: plane.settings.aspectRatio } };
 }
